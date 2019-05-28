@@ -41,6 +41,8 @@
               v-model="selectdValue"
               style="width:150px"
               placeholder="choose your env"
+              trigger="hover"
+              filterable
             ></Cascader>
 
           </Row>
@@ -63,7 +65,7 @@
 
             <Button
               type="primary"
-              icon="ios-play"
+              icon="md-play"
               :loading="submitLoading"
               @click='submitCode'
             >
@@ -78,20 +80,44 @@
                 icon="ios-share"
               >Share</Button>
             </Tooltip>
-
+            <Input
+              icon="md-document"
+              style="width: 200px"
+            />
           </Row>
           <!-- 代码结果 -->
-          <div style="background:#eee">
-            <Card :bordered="false">
-              <p slot="title">Console</p>
-              <Input
-                v-model="result"
-                type="textarea"
-                :rows="10"
-                placeholder="Stdout..."
-              />
-            </Card>
-          </div>
+          <Card :bordered="false">
+            <p slot="title">Console</p>
+            <Input
+              v-model="result"
+              type="textarea"
+              :rows="11"
+              :disabled="submitLoading"
+              placeholder="Stdout..."
+            />
+          </Card>
+          <Divider orientation="left">Read me</Divider>
+
+          <Card>
+            <p>1.目前做了CPU、内存、进程数和执行结果长度限制，但暂时不进行网络限制，所以可以在代码中发起网络请求，如果遇到恶意代码，则会进行网络限制。</p>
+            <p>2.后续会支持更多的语言和版本<del>，如果我有钱买更好的服务器</del>。</p>
+            <p>3.有问题、建议和Bug可以
+              <Tooltip content="https://github.com/RudyChow">
+                <a
+                  href="https://github.com/RudyChow"
+                  target="_blank"
+                >
+                  <Icon type="logo-github" />
+                </a>
+              </Tooltip>
+              或者
+              <Tooltip content="454106101@163.com">
+                <a href="mailto: 454106101@163.com">
+                  <Icon type="md-mail" />。
+                </a>
+              </Tooltip>
+            </p>
+          </Card>
           </Col>
         </Row>
       </Content>
@@ -121,9 +147,8 @@ export default {
       result: '',
       submitLoading: false,
       // 编辑器初始化的值
-      codeMirrorShow: `//1. select language
-//2. select version
-//3. input your code`,
+      codeMirrorShow: `//1. select language and version
+//2. input your code in here`,
       codeMirrorOptions: {
         mode: '',
         tabSize: 4,
@@ -146,7 +171,6 @@ export default {
     axios
       .get('/api/v1/versions')
       .then((response) => {
-        console.log(response)
         if (response.status !== 200) {
           this.$Message.error('获取运行环境失败')
           return
@@ -158,7 +182,7 @@ export default {
 
         this.handleEnvData(response.data.data)
       })
-      .catch(function (error) { // 请求失败处理
+      .catch((error) => { // 请求失败处理
         this.$Message.error('获取运行环境失败' + error)
       })
   },
@@ -183,14 +207,14 @@ export default {
           'code': this.code
         })
         .then((response) => {
+          this.submitLoading = false
           this.result = response.data.error !== '' ? response.data.error : response.data.data.code_result
-          this.submitLoading = false
         })
-        .catch(function (error) { // 请求失败处理
-          this.$Message.error('oops,something went wrong')
-          console.log('获取执行结果失败')
-          console.log(error)
+        .catch((error) => { // 请求失败处理
           this.submitLoading = false
+          this.result = ''
+          this.$Message.error('oops,something went wrong')
+          console.log('获取执行结果失败:' + error)
         })
     },
     // 数据转换

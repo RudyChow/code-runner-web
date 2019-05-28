@@ -12,7 +12,7 @@ echo "hello php";`
 import "fmt"
 
 func main() {
-fmt.Print("hello go")
+  fmt.Print("hello go")
 }`
   },
   'python': {
@@ -24,19 +24,21 @@ print("python3")`
   'c': {
     'mode': 'text/x-c',
     'template': `#include <stdio.h>
+
 int main(){
-printf("hello c");
-return 0;
+  printf("hello c");
+  return 0;
 }`
   },
   'c++': {
     'mode': 'text/x-c++src',
     'template': `#include <iostream>
 using namespace std;
+
 int main()
 {
-cout << "Hello c++!" << endl;
-return 0;
+  cout << "Hello c++!" << endl;
+  return 0;
 }`
   },
   'ruby': {
@@ -47,7 +49,7 @@ return 0;
     'mode': 'text/x-java',
     'template': `class Main {
   public static void main(String[] args) {
-      System.out.println("Hello java!");
+    System.out.println("Hello java!");
   }
 }`
   }

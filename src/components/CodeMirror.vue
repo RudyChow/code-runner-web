@@ -2,6 +2,10 @@
   <codemirror
     :options="editorOption"
     v-model="value"
+    ref="myCm"
+    @ready="onCmReady"
+    @focus="onCmFocus"
+    @input="onCmCodeChange"
   >
   </codemirror>
 </template>
@@ -45,6 +49,15 @@ export default {
   },
   mounted () {
     this.value = this.show === null || this.show === undefined ? '' : this.show
+    this.$refs.myCm.codemirror.setSize('auto', '500px')
+  },
+  methods: {
+    onCmReady (cm) {
+    },
+    onCmFocus (cm) {
+    },
+    onCmCodeChange (newCode) {
+    }
   },
   watch: {
     // 显示内容
@@ -59,7 +72,6 @@ export default {
     language: function () {
       this.editorOption.mode = editorLanguages[this.language].mode
       this.value = editorLanguages[this.language].template
-      console.log(this.value)
     }
   }
 }
