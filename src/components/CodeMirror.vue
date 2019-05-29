@@ -4,7 +4,6 @@
     v-model="value"
     ref="myCm"
     @ready="onCmReady"
-    @focus="onCmFocus"
     @input="onCmCodeChange"
   >
   </codemirror>
@@ -32,6 +31,10 @@ import 'codemirror/mode/go/go.js'
 import 'codemirror/mode/python/python.js'
 import 'codemirror/mode/ruby/ruby.js'
 import 'codemirror/mode/clike/clike.js'
+// 代码提示
+import 'codemirror/addon/hint/show-hint.js'
+import 'codemirror/addon/hint/show-hint.css'
+import 'codemirror/addon/hint/anyword-hint.js'
 
 import editorLanguages from '../editor/language.js'
 
@@ -52,21 +55,22 @@ export default {
     this.$refs.myCm.codemirror.setSize('auto', '500px')
   },
   methods: {
+    // 编辑器初始化
     onCmReady (cm) {
+      // 开启提示
+      cm.on('keypress', () => {
+        cm.showHint({completeSingle: false})
+      })
     },
-    onCmFocus (cm) {
-    },
+    // 编辑器内容改变
     onCmCodeChange (newCode) {
+      this.$emit('update:code', newCode)
     }
   },
   watch: {
     // 显示内容
     show: function (val) {
       this.value = val
-    },
-    // 内容变化
-    value: function (val) {
-      this.$emit('update:code', val)
     },
     // 语言变化
     language: function () {

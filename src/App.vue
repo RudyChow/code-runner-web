@@ -40,7 +40,7 @@
               :data="languageVersions"
               v-model="selectdValue"
               style="width:150px"
-              placeholder="choose your env"
+              placeholder="Language/Version"
               trigger="hover"
               filterable
             ></Cascader>
