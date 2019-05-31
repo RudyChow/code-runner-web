@@ -5,8 +5,11 @@ import App from './App'
 import iView from 'iview'
 import 'iview/dist/styles/iview.css'
 
+import VueClipboard from 'vue-clipboard2'
+
 Vue.config.productionTip = false
 Vue.use(iView)
+Vue.use(VueClipboard)
 
 /* eslint-disable no-new */
 new Vue({
