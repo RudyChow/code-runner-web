@@ -11,12 +11,20 @@ module.exports = {
     assetsSubDirectory: 'static',
     assetsPublicPath: '/',
     proxyTable: {
-      '/api': {    //将www.exaple.com印射为/apis
-        target: 'http://192.168.1.109:28080/api',  // 接口域名
+      '/api/code': {    //将www.exaple.com印射为/api/code
+        target: 'http://192.168.1.109:28080/api/code',  // 接口域名
         secure: false,  // 如果是https接口，需要配置这个参数
         changeOrigin: true,  //是否跨域
         pathRewrite: {
-          '^/api': ''   //需要rewrite的,
+          '^/api/code': ''   //需要rewrite的,
+        }
+      },
+      '/api/snippet': {    //将www.exaple.com印射为/api/snippet
+        target: 'http://192.168.1.109:17000/api/snippet',  // 接口域名
+        secure: false,  // 如果是https接口，需要配置这个参数
+        changeOrigin: true,  //是否跨域
+        pathRewrite: {
+          '^/api/snippet': ''   //需要rewrite的,
         }
       }
     },
