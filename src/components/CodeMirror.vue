@@ -61,12 +61,14 @@ export default {
       cm.on('keypress', () => {
         cm.showHint({completeSingle: false})
       })
+      cm.on('keyup', () => {
+        this.$emit('update:code', this.value)
+        this.$emit('push:code')
+      })
     },
     // 编辑器内容改变
     onCmCodeChange (newCode) {
       this.$emit('update:code', newCode)
-      this.$emit('update:ws:code', newCode)
-      this.$emit('push:code')
     }
   },
   watch: {

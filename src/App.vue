@@ -13,18 +13,6 @@
               color="#fff"
             />
           </div>
-          <div class="layout-nav">
-            <Tooltip max-width="200">
-              <Button
-                type="text"
-                ghost
-              >TODO</Button>
-              <div slot="content">
-                <p><del>1.短链接分享</del></p>
-                <p>2.协助编程</p>
-              </div>
-            </Tooltip>
-          </div>
         </Menu>
       </Header>
       <Content :style="{padding: '10px 20px'}">
@@ -38,7 +26,8 @@
 
             <Cascader
               :data="languageVersions"
-              v-model="selectdValue"
+              :disabled="!roomCharge"
+              v-model="selectedValue"
               style="width:150px"
               placeholder="Language/Version"
               trigger="hover"
@@ -54,7 +43,6 @@
             :editorOption="codeMirrorOptions"
             v-model="code"
             v-on:update:code="code=$event"
-            v-on:update:ws:code="wsCode=$event"
             v-on:push:code="pushCode"
           ></codemirror>
           </Col>
@@ -152,7 +140,7 @@ export default {
   data () {
     return {
       // 被选中的及联语言和版本
-      selectdValue: [],
+      selectedValue: [],
       // 语言和版本的及联下拉框
       languageVersions: [],
       // 被选中的语言
@@ -161,7 +149,6 @@ export default {
       selectedVersion: '',
       // 代码
       code: '',
-      wsCode: '',
       // 运行结果
       result: '',
       // 按钮的loading
@@ -188,16 +175,18 @@ export default {
         // 代码折叠
         lineWrapping: true,
         foldGutter: true,
-        gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter']
+        gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+        readOnly: false
       },
       // websocket相关
       ws: {
         websock: null,
         username: '',
         room: '',
-        online: 0
-      }
-
+        online: 0,
+        invite: false
+      },
+      roomCharge: true
     }
   },
   mounted () {
@@ -244,7 +233,7 @@ export default {
             if (response.data.error !== '') {
               this.$Message.error('获取代码段失败:代码不存在或已过期')
             }
-            this.selectdValue = [response.data.data.language, response.data.data.version]
+            this.selectedValue = [response.data.data.language, response.data.data.version]
             this.codeMirrorShow = response.data.data.code
             this.share.url = window.location.href
             this.$Message.success('获取代码成功')
@@ -361,6 +350,7 @@ export default {
         return
       }
       this.initWebsocket()
+      this.ws.invite = true
     },
     // 创建websocket连接
     initWebsocket: function () {
@@ -371,8 +361,9 @@ export default {
       this.ws.websock.onerror = this.websocketonerror
       this.ws.websock.onclose = this.websocketclose
     },
-    websocketonopen () { // 连接建立之后执行send方法发送数据
-      console.log('open')
+    websocketonopen () {
+      // 如果是邀请者，则需要push代码，如果是被邀请者，则需要pull代码
+      this.ws.invite ? this.pushCode() : this.pullCode()
     },
     websocketonerror () { // 连接建立失败重连
     },
@@ -401,60 +392,84 @@ export default {
           this.ws.online = online
 
           // 同步代码
-          if (this.ws.username !== data.data.last_mod_user) {
+          if (!this.roomCharge) {
+            console.log('sync')
+
             if (data.data.language !== '' && data.data.version !== '') {
-              this.selectdValue = [data.data.language, data.data.version]
-              this.codeMirrorShow = data.data.code
+              this.selectedValue = [data.data.language, data.data.version]
             }
+            this.codeMirrorShow = data.data.code
           }
           break
         // 消息推送
         case 'message':
           this.$Message.info(data.data)
           break
+        //  代码
+        case 'code':
+          if (data.data.language !== '' && data.data.version !== '') {
+            this.selectedValue = [data.data.language, data.data.version]
+          }
+          this.codeMirrorShow = data.data.code
+          break
+        // 控制权
+        case 'charge':
+          let inCharge = false
+          if (data.data === this.ws.username || data.data === '') {
+            inCharge = true
+          }
+          this.roomCharge = inCharge
+          break
         default:
           break
       }
     },
     websocketsend (data) {
-      // 有连接并且保持连接时才可以send
       if (this.ws.websock === null || this.ws.websock.readyState !== 1) return
-      console.log('push')
-
       this.ws.websock.send(data)
     },
-    websocketclose (e) { // 关闭
-      console.log('断开连接', e)
+    websocketclose () { // 关闭
+      this.ws.websock = null
     },
     // 推代码
     pushCode (code = null) {
+      if (!this.roomCharge) return
       let obj = {
         type: 'push',
         data: {
           language: this.selectedLanguage,
           version: this.selectedVersion,
-          code: code === null ? this.wsCode : code
+          code: code === null ? this.code : code
         }
+      }
+      this.websocketsend(JSON.stringify(obj))
+    },
+    // 拉代码
+    pullCode () {
+      console.log('pull')
+      let obj = {
+        type: 'pull'
       }
       this.websocketsend(JSON.stringify(obj))
     }
   },
   watch: {
     // 级连变化
-    selectdValue (params) {
+    selectedValue (params) {
       if (params.length === 0) {
         this.selectedLanguage = this.selectedVersion = ''
         return
       }
 
       for (let index = 0; index < params.length; index++) {
-        if (index === 0) {
-          this.selectedLanguage = params[index]
-        }
-        if (index === 1) {
-          this.selectedVersion = params[index]
-        }
+        if (index === 0) this.selectedLanguage = params[index]
+        if (index === 1) this.selectedVersion = params[index]
       }
+    },
+    // 控制权转换
+    roomCharge () {
+      this.$Message.info(this.roomCharge ? 'you can code now' : 'somebody is coding')
+      this.codeMirrorOptions.readOnly = !this.roomCharge
     }
   }
 }
