@@ -65,17 +65,19 @@ export default {
     // 编辑器内容改变
     onCmCodeChange (newCode) {
       this.$emit('update:code', newCode)
+      this.$emit('update:ws:code', newCode)
+      this.$emit('push:code')
     }
   },
   watch: {
-    // 显示内容
-    show: function (val) {
-      this.value = val
-    },
     // 语言变化
     language: function () {
       this.editorOption.mode = editorLanguages[this.language].mode
       this.value = editorLanguages[this.language].template
+    },
+    // 显示内容
+    show: function (val) {
+      this.value = val
     }
   }
 }

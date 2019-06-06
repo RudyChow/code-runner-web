@@ -54,6 +54,8 @@
             :editorOption="codeMirrorOptions"
             v-model="code"
             v-on:update:code="code=$event"
+            v-on:update:ws:code="wsCode=$event"
+            v-on:push:code="pushCode"
           ></codemirror>
           </Col>
 
@@ -68,8 +70,15 @@
               icon="md-play"
               :loading="submitLoading"
               @click='submitCode'
-            >
-              <span>Run!</span>
+            >Run!
+            </Button>
+
+            <Button
+              type="info"
+              icon="md-contacts"
+              :loading="inviteLoading"
+              @click='invite'
+            >Invite
             </Button>
 
               <Button
@@ -78,10 +87,10 @@
                 :loading="share.loading"
                 @click="shareSnippet"
               >Share</Button>
-            <Tooltip content="分享成功，点击icon复制" :always='share.tips' :disabled='!share.tips' placement="right" theme="dark">
+            <Tooltip content="点击icon复制" :always='share.tips' :disabled='!share.tips' placement="right" theme="dark">
             <Input
               icon="md-document"
-              style="width: 200px"
+              style="width: 250px"
               v-model="share.url"
               @on-click="copyShareUrl"
             />
@@ -152,10 +161,12 @@ export default {
       selectedVersion: '',
       // 代码
       code: '',
+      wsCode: '',
       // 运行结果
       result: '',
       // 按钮的loading
       submitLoading: false,
+      inviteLoading: false,
       // 分享相关
       share: {
         loading: false,
@@ -178,7 +189,15 @@ export default {
         lineWrapping: true,
         foldGutter: true,
         gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter']
+      },
+      // websocket相关
+      ws: {
+        websock: null,
+        username: '',
+        room: '',
+        online: 0
       }
+
     }
   },
   mounted () {
@@ -186,6 +205,8 @@ export default {
     this.getVersions()
     // 获取代码片段
     this.getSnippet()
+    // 获取房间
+    this.initRoom()
   },
   methods: {
     // 获取语言和版本
@@ -280,6 +301,7 @@ export default {
           console.log('分享失败:' + error)
         })
     },
+    // 复制分享链接
     copyShareUrl: function () {
       this.$copyText(this.share.url).then((e) => {
         this.$Message.success('复制成功')
@@ -319,6 +341,102 @@ export default {
         return false
       }
       return true
+    },
+    // 根据path判断是否自动进入房间
+    initRoom: function () {
+      let path = window.location.pathname
+      let paths = path.split('/')
+      if (paths.length === 3 && paths[1] === 'w') {
+        this.ws.room = paths[2]
+      }
+
+      if (this.ws.room !== '') {
+        this.initWebsocket()
+      }
+    },
+    // 邀请
+    invite: function () {
+      if (this.ws.websock != null) {
+        this.$Message.info('你目前已在房间中')
+        return
+      }
+      this.initWebsocket()
+    },
+    // 创建websocket连接
+    initWebsocket: function () {
+      const wsuri = `ws://192.168.1.109:27000/ws` + (this.ws.room ? ('/' + this.ws.room) : '')// 这个地址由后端童鞋提供
+      this.ws.websock = new WebSocket(wsuri)
+      this.ws.websock.onmessage = this.websocketonmessage
+      this.ws.websock.onopen = this.websocketonopen
+      this.ws.websock.onerror = this.websocketonerror
+      this.ws.websock.onclose = this.websocketclose
+    },
+    websocketonopen () { // 连接建立之后执行send方法发送数据
+      console.log('open')
+    },
+    websocketonerror () { // 连接建立失败重连
+    },
+    websocketonmessage (e) {
+      let data = JSON.parse(e.data)
+      console.log(data)
+      switch (data.type) {
+        // 个人信息
+        case 'info':
+          this.ws.username = data.data.username
+          this.ws.room_id = data.data.room_id
+          this.share.tips = true
+          this.share.url = window.location.origin + '/w/' + data.data.room_id
+
+          break
+        // 房间信息
+        case 'room':
+          // 人数判断
+          let online = Object.keys(data.data.clients).length
+          if (this.ws.online !== online) {
+            this.$Notice.info({
+              title: '房间人数：' + online,
+              duration: 10
+            })
+          }
+          this.ws.online = online
+
+          // 同步代码
+          if (this.ws.username !== data.data.last_mod_user) {
+            if (data.data.language !== '' && data.data.version !== '') {
+              this.selectdValue = [data.data.language, data.data.version]
+              this.codeMirrorShow = data.data.code
+            }
+          }
+          break
+        // 消息推送
+        case 'message':
+          this.$Message.info(data.data)
+          break
+        default:
+          break
+      }
+    },
+    websocketsend (data) {
+      // 有连接并且保持连接时才可以send
+      if (this.ws.websock === null || this.ws.websock.readyState !== 1) return
+      console.log('push')
+
+      this.ws.websock.send(data)
+    },
+    websocketclose (e) { // 关闭
+      console.log('断开连接', e)
+    },
+    // 推代码
+    pushCode (code = null) {
+      let obj = {
+        type: 'push',
+        data: {
+          language: this.selectedLanguage,
+          version: this.selectedVersion,
+          code: code === null ? this.wsCode : code
+        }
+      }
+      this.websocketsend(JSON.stringify(obj))
     }
   },
   watch: {
