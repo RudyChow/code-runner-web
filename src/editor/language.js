@@ -52,6 +52,10 @@ int main()
     System.out.println("Hello java!");
   }
 }`
+  },
+  'javascript': {
+    'mode': 'text/javascript',
+    'template': 'console.log("Hello javascript")'
   }
 }
 
